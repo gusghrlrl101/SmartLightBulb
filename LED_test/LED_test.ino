@@ -96,23 +96,34 @@ void setup() {
 void loop() {
   Blynk.run();
 
+  int temp = digitalRead(D1);
+  Serial.println(temp);
+  
   cds = analogRead(A0);
   int cds_brightness = get_cds_brightness();
-  Serial.println(cds);
   
   if(power == 1){
     changeMode();
-    
+
+    // auto
     if(mymode == 1){
       for(int i = 0; i < NUMPIXELS; i++){
          pixels.setPixelColor(i, pixels.Color(r, g, b));
          pixels.setBrightness(cds_brightness);
       }
     }
+    // select
     else if(mymode == 2){
       for(int i = 0; i < NUMPIXELS; i++){
          pixels.setPixelColor(i, pixels.Color(r, g, b));
          pixels.setBrightness(brightness);
+      }
+    }
+    // random
+    else if(mymode == 3){
+      for(int i = 0; i < NUMPIXELS; i++){
+         pixels.setPixelColor(i, pixels.Color(random(0, 256), random(0,256), random(0, 256)));
+         pixels.setBrightness(random(10, 256));
       }
     }
   } else{
