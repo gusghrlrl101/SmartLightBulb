@@ -40,17 +40,25 @@ int r = 0, g = 0, b = 0;
 int mymode = 1;
 int toggle = 0;
 int change = 0;
+int power = 0;
 
 const int MODE_NUM = 3;
 
+// RGB read
 BLYNK_WRITE(V0){
   r = param[0].asInt();
   g = param[1].asInt();
   b = param[2].asInt();
 }
 
+// mode change read
 BLYNK_WRITE(V1){
   toggle = param.asInt();
+}
+
+// power read
+BLYNK_WRITE(V3){
+  power = param.asInt();
 }
 
 void changeMode(){
@@ -69,12 +77,17 @@ void changeMode(){
 
 void loop() {
   Blynk.run();
-  changeMode();
-
-  if(mymode == 2){
-    for(int i = 0; i < NUMPIXELS; i++){
-       pixels.setPixelColor(i, pixels.Color(r, g, b));
+  
+  if(power == 1){
+    changeMode();
+  
+    if(mymode == 2){
+      for(int i = 0; i < NUMPIXELS; i++)
+         pixels.setPixelColor(i, pixels.Color(r, g, b));
     }
+  } else{
+    for(int i = 0; i < NUMPIXELS; i++)
+       pixels.setPixelColor(i, pixels.Color(0, 0, 0));
   }
   
   pixels.show();
