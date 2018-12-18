@@ -36,6 +36,7 @@ void setup() {
 }
 
 int r = 0, g = 0, b = 0;
+int brightness = 255;
 
 int mymode = 1;
 int toggle = 0;
@@ -61,6 +62,11 @@ BLYNK_WRITE(V3){
   power = param.asInt();
 }
 
+// brightness read
+BLYNK_WRITE(V4){
+  brightness = param.asInt();
+}
+
 void changeMode(){
   if(change == 0){
     if(toggle == 1)
@@ -82,8 +88,11 @@ void loop() {
     changeMode();
   
     if(mymode == 2){
-      for(int i = 0; i < NUMPIXELS; i++)
+      for(int i = 0; i < NUMPIXELS; i++){
          pixels.setPixelColor(i, pixels.Color(r, g, b));
+         pixels.setBrightness(brightness);
+      }
+      Serial.println(brightness);
     }
   } else{
     for(int i = 0; i < NUMPIXELS; i++)
