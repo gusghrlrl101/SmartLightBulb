@@ -13,8 +13,8 @@ int delayval = 500; // delay for half a second
 #include <ESP8266WiFi.h>
 #include <BlynkSimpleEsp8266.h>
 char auth[] = "1084182bd58f49f5817670c4d51d183b";
-char ssid[] = "U+Net1B3B";
-char pass[] = "1000003762";
+char ssid[] = "Inha_Dormitory2";
+char pass[] = "inha2006";
 
 const int MODE_NUM = 3;
 int mymode = 1;
@@ -97,39 +97,65 @@ void loop() {
   Blynk.run();
 
   int temp = digitalRead(D1);
-  Serial.println(temp);
+  int alerm = digitalRead(D2);
   
   cds = analogRead(A0);
   int cds_brightness = get_cds_brightness();
+
+   Serial.print("mode: ");
+   Serial.print(mymode);
+   Serial.print(", power: ");
+   Serial.print(power);
+   Serial.print(", alerm: ");
+   Serial.print(alerm);
+   Serial.print(", temp: ");
+   Serial.print(temp);
+   Serial.print(", cds: ");
+   Serial.println(cds);
   
   if(power == 1){
     changeMode();
 
-    // auto
-    if(mymode == 1){
-      for(int i = 0; i < NUMPIXELS; i++){
-         pixels.setPixelColor(i, pixels.Color(r, g, b));
-         pixels.setBrightness(cds_brightness);
+    if(alerm == 0){
+      // auto
+      if(mymode == 1){
+        pixels.setBrightness(cds_brightness);
+        for(int i = 0; i < NUMPIXELS; i++)
+           pixels.setPixelColor(i, pixels.Color(r, g, b));
+      }
+      // select
+      else if(mymode == 2){
+        pixels.setBrightness(brightness);
+        for(int i = 0; i < NUMPIXELS; i++)
+           pixels.setPixelColor(i, pixels.Color(r, g, b));
+      }
+      // random
+      else if(mymode == 3){
+        pixels.setBrightness(random(10, 256));
+        for(int i = 0; i < NUMPIXELS; i++)
+           pixels.setPixelColor(i, pixels.Color(random(0, 256), random(0,256), random(0, 256)));
       }
     }
-    // select
-    else if(mymode == 2){
-      for(int i = 0; i < NUMPIXELS; i++){
-         pixels.setPixelColor(i, pixels.Color(r, g, b));
-         pixels.setBrightness(brightness);
-      }
+    // alerm
+    else{
+        pixels.setBrightness(255);
+          
+        for(int i = 0; i < NUMPIXELS; i++)
+           pixels.setPixelColor(i, pixels.Color(255, 0, 0));
+        pixels.show();
+        delay(500);
+        
+        for(int i = 0; i < NUMPIXELS; i++)
+           pixels.setPixelColor(i, pixels.Color(0, 0, 0));
+        pixels.show();
+        delay(500);
     }
-    // random
-    else if(mymode == 3){
-      for(int i = 0; i < NUMPIXELS; i++){
-         pixels.setPixelColor(i, pixels.Color(random(0, 256), random(0,256), random(0, 256)));
-         pixels.setBrightness(random(10, 256));
-      }
-    }
-  } else{
+  }
+  // power off
+  else{
     for(int i = 0; i < NUMPIXELS; i++)
        pixels.setPixelColor(i, pixels.Color(0, 0, 0));
   }
-  
   pixels.show();
+  delay(100);
 }
