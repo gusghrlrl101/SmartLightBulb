@@ -2,35 +2,30 @@
 #ifdef __AVR__
   #include <avr/power.h>
 #endif
-
 #define PIN            14
 #define NUMPIXELS      12
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 int delayval = 500; // delay for half a second
 
-
 #define BLYNK_PRINT Serial
 #include <ESP8266WiFi.h>
 #include <BlynkSimpleEsp8266.h>
 char auth[] = "1084182bd58f49f5817670c4d51d183b";
-char ssid[] = "Inha_Dormitory2";
-char pass[] = "inha2006";
+char ssid[] = "HyunHoPhone";
+char pass[] = "01089050241";
 
 #include "Adafruit_MQTT.h"
 #include "Adafruit_MQTT_Client.h"
-#define WLAN_SSID "Inha_Dormitory2"
-#define WLAN_PASS "inha2006"
-#define MQTT_SERVER "10.11.55.85"
+#define WLAN_SSID "HyunHoPhone"
+#define WLAN_PASS "01089050241"
+#define MQTT_SERVER "172.20.10.11"
 #define MQTT_PORT 1883
 #define MQTT_USERNAME ""
 #define MQTT_PASSWORD ""
 
 WiFiClient client;
 Adafruit_MQTT_Client mqtt(&client, MQTT_SERVER, MQTT_PORT, MQTT_USERNAME, MQTT_PASSWORD);
-// Notice MQTT paths for AIO follow the form: <username>/feeds/<feedname> 
-Adafruit_MQTT_Publish pi_led = Adafruit_MQTT_Publish(&mqtt, MQTT_USERNAME "/leds/pi"); 
-// Setup a feed called 'esp8266_led' for subscribing to changes. 
-Adafruit_MQTT_Subscribe esp8266_led = Adafruit_MQTT_Subscribe(&mqtt, MQTT_USERNAME "/leds/esp8266"); 
+Adafruit_MQTT_Subscribe rasp_out = Adafruit_MQTT_Subscribe(&mqtt, MQTT_USERNAME "/rasp"); 
 
 void MQTT_connect() { 
  int8_t ret; 
@@ -53,6 +48,7 @@ void MQTT_connect() {
  } 
  Serial.println("MQTT Connected!"); 
 }  
+
 const int MODE_NUM = 3;
 int mymode = 1;
 int toggle = 0;
@@ -61,9 +57,12 @@ int power = 0;
 
 // mode 1
 int cds = 0;
+int pow2 = 0;
+int mode1_nochange = 0;
 
 // mode 2
 int r = 255, g = 255, b = 255;
+int rr = 255, gg = 255, bb = 255;
 int brightness = 255;
 
 int first = 1;
@@ -88,6 +87,11 @@ BLYNK_WRITE(V3){
 // brightness read
 BLYNK_WRITE(V4){
   brightness = param.asInt();
+}
+
+// brightness read
+BLYNK_WRITE(V5){
+  mode1_nochange = param.asInt();
 }
 
 void changeMode(){
@@ -116,6 +120,19 @@ int get_cds_brightness(){
   return cds_brightness;
 }
 
+String getRasp(){
+  String str1;
+  Adafruit_MQTT_Subscribe *subscription; 
+   while ((subscription = mqtt.readSubscription())) { 
+     if (subscription == &rasp_out) { 
+       str1 = (char *)rasp_out.lastread; 
+     } 
+   }
+
+   return str1;
+}
+
+///////////setup////////////////////////
 
 void setup() {
   Serial.begin(9600);
@@ -129,7 +146,7 @@ void setup() {
    delay(500); 
    Serial.print("."); 
  } 
-  mqtt.subscribe(&esp8266_led);
+  mqtt.subscribe(&rasp_out);
   
   pinMode(D3, OUTPUT);
 
@@ -141,42 +158,43 @@ void setup() {
 }
 
 
+////////////////loop/////////////////////
+
 void loop() { 
+  Blynk.run();
+  MQTT_connect();
   if(first == 1){
     Serial.println(mqtt.connected());
     first = 0;
+    power = 1;
+    Blynk.virtualWrite(3, HIGH);
+  } 
+  
+  
+  int pow = digitalRead(D6);
+  if (pow2 != pow && pow == 1){
+    if(power == 1){
+      power = 0;
+      Blynk.virtualWrite(3, LOW);
+    }
+    else{
+      power = 1;
+      Blynk.virtualWrite(3, HIGH);
+    }
   }
-  MQTT_connect();
-  
-  Adafruit_MQTT_Subscribe *subscription; 
-   while ((subscription = mqtt.readSubscription())) { 
-     if (subscription == &esp8266_led) { 
-       Serial.print(F("Got: ")); 
-       Serial.println((char *)esp8266_led.lastread); 
-     } 
-   } 
+  pow2 = pow;
 
+  int moving = digitalRead(D1);
+  if (moving == 1){
+    power = 1;
+    Blynk.virtualWrite(3, HIGH);
+  }
 
-  
-  Blynk.run();
-
-  int temp = digitalRead(D1);
   int alerm = digitalRead(D2);
 
   cds = analogRead(A0);
   int cds_brightness = get_cds_brightness();
-/*
-   Serial.print("mode: ");
-   Serial.print(mymode);
-   Serial.print(", power: ");
-   Serial.print(power);
-   Serial.print(", alerm: ");
-   Serial.print(alerm);
-   Serial.print(", temp: ");
-   Serial.print(temp);
-   Serial.print(", cds: ");
-   Serial.println(cds);
-  */
+  
   if(power == 1){
     digitalWrite(D3, HIGH);
     changeMode();
@@ -184,9 +202,21 @@ void loop() {
     if(alerm == 0){
       // auto
       if(mymode == 1){
+        String s = getRasp();
+        int xx = s.indexOf(' ');
+        int yy = s.lastIndexOf(' ');
+
+        if(mode1_nochange==0){
+          if(xx != -1 && yy != -1){
+            rr = s.substring(0, xx).toInt();
+            gg = s.substring(xx, yy).toInt();
+            bb = s.substring(yy).toInt();
+          }
+        }
+        
         pixels.setBrightness(cds_brightness);
         for(int i = 0; i < NUMPIXELS; i++)
-           pixels.setPixelColor(i, pixels.Color(r, g, b));
+           pixels.setPixelColor(i, pixels.Color(rr, gg, bb));
       }
       // select
       else if(mymode == 2){
@@ -222,6 +252,30 @@ void loop() {
     for(int i = 0; i < NUMPIXELS; i++)
        pixels.setPixelColor(i, pixels.Color(0, 0, 0));
   }
+  
+   Serial.print("mode: ");
+   Serial.print(mymode);
+   Serial.print(", power: ");
+   Serial.print(power);
+   Serial.print(", alerm: ");
+   Serial.print(alerm);
+   Serial.print(", moving: ");
+   Serial.print(moving);
+   Serial.print(", cds: ");
+   Serial.print(cds);
+   Serial.print(", r: ");
+   Serial.print(r);
+   Serial.print(", g: ");
+   Serial.print(g);
+   Serial.print(", b: ");
+   Serial.print(b);
+   Serial.print(", rr: ");
+   Serial.print(rr);
+   Serial.print(", gg: ");
+   Serial.print(gg);
+   Serial.print(", bb: ");
+   Serial.println(bb);
+   
   pixels.show();
   delay(100);
 }
